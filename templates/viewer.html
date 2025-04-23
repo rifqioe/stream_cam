@@ -189,7 +189,44 @@
                             <li>Use the capture button to take a still image</li>
                             <li>You can download captured images</li>
                             <li>Click refresh to update the list of available streams</li>
+                            <li>Use the direct links to access streams in other applications</li>
                         </ol>
+                    </div>
+                </div>
+                
+                <div class="card mt-3" id="directLinksCard" style="display: none;">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5>Direct Links</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Stream URL:</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="streamUrl" readonly>
+                                <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('streamUrl')">Copy</button>
+                            </div>
+                            <div class="form-text">Use in media players or embed in websites</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Direct View URL:</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="directViewUrl" readonly>
+                                <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('directViewUrl')">Copy</button>
+                            </div>
+                            <div class="form-text">Fullscreen view with minimal interface</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Image Capture URL:</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="imageUrl" readonly>
+                                <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('imageUrl')">Copy</button>
+                            </div>
+                            <div class="form-text">Get a still image from the stream</div>
+                        </div>
+                        
+                        <a id="openDirectViewLink" href="#" target="_blank" class="btn btn-primary w-100">Open Direct View</a>
                     </div>
                 </div>
             </div>
@@ -277,6 +314,21 @@
             }
         }
         
+        // Copy text to clipboard
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            element.select();
+            document.execCommand('copy');
+            
+            // Show feedback
+            const button = element.nextElementSibling;
+            const originalText = button.textContent;
+            button.textContent = 'Copied!';
+            setTimeout(() => {
+                button.textContent = originalText;
+            }, 1500);
+        }
+        
         // Select a stream to view
         function selectStream(streamId, name) {
             // If already selected, do nothing
@@ -302,6 +354,22 @@
             noStreamMessage.classList.add('d-none');
             streamControls.classList.remove('d-none');
             
+            // Show and update direct links card
+            const directLinksCard = document.getElementById('directLinksCard');
+            directLinksCard.style.display = 'block';
+            
+            // Get the base URL (protocol + host)
+            const baseUrl = window.location.protocol + '//' + window.location.host;
+            
+            // Set the URLs
+            document.getElementById('streamUrl').value = `${baseUrl}/stream/${streamId}`;
+            document.getElementById('directViewUrl').value = `${baseUrl}/direct-stream/${streamId}`;
+            document.getElementById('imageUrl').value = `${baseUrl}/api/capture_image/${streamId}`;
+            
+            // Update direct view link
+            const openDirectViewLink = document.getElementById('openDirectViewLink');
+            openDirectViewLink.href = `/direct-stream/${streamId}`;
+            
             // Hide captured image if any
             capturedImageContainer.classList.add('d-none');
         }
@@ -313,6 +381,10 @@
             streamImage.classList.add('d-none');
             noStreamMessage.classList.remove('d-none');
             streamControls.classList.add('d-none');
+            
+            // Hide direct links card
+            const directLinksCard = document.getElementById('directLinksCard');
+            directLinksCard.style.display = 'none';
         }
         
         // Capture an image from the current stream

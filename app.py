@@ -216,6 +216,16 @@ def stream(stream_id):
     return Response(generate_frames(stream_id), mimetype="multipart/x-mixed-replace; boundary=frame")
 
 
+@app.route("/direct-stream/<stream_id>")
+def direct_stream(stream_id):
+    """Render a simple page that displays only the stream."""
+    if stream_id not in streams:
+        return "Stream not found", 404
+    
+    stream_name = streams[stream_id].name
+    return render_template("direct_stream.html", stream_id=stream_id, stream_name=stream_name)
+
+
 @app.route("/api/deactivate_stream/<stream_id>", methods=["POST"])
 def deactivate_stream(stream_id):
     with streams_lock:
