@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stream Cam System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 2rem;
+            background-color: #f8f9fa;
+        }
+        .card {
+            margin-bottom: 2rem;
+            transition: transform 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .hero {
+            background-color: #343a40;
+            color: white;
+            padding: 3rem 0;
+            margin-bottom: 2rem;
+        }
+        .btn-lg {
+            margin: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="hero text-center">
+        <div class="container">
+            <h1>Stream Cam System</h1>
+            <p class="lead">Stream from your mobile device and view streams from anywhere</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Stream from your device</h5>
+                                <p class="card-text">Use your mobile phone or webcam to create a live video stream</p>
+                                <a href="/streamer" class="btn btn-primary btn-lg">Start Streaming</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">View available streams</h5>
+                                <p class="card-text">Watch live streams and capture images from any active stream</p>
+                                <a href="/viewer" class="btn btn-success btn-lg">View Streams</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-5">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>How it works</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul>
+                            <li>To stream: Open the streamer page on your mobile device or computer with a camera</li>
+                            <li>To view: Open the viewer page and select from available streams</li>
+                            <li>You can capture still images from any stream</li>
+                            <li>Multiple devices can stream simultaneously</li>
+                            <li>Streams are automatically deactivated after 30 seconds of inactivity</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="mt-5 py-3 text-center text-muted">
+        <div class="container">
+            <p>Stream Cam System &copy; 2025</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

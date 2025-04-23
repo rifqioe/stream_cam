@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stream Cam - Streamer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 1rem;
+            background-color: #f8f9fa;
+        }
+        .video-container {
+            position: relative;
+            margin: 1rem auto;
+            max-width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        #videoElement {
+            width: 100%;
+            background-color: #000;
+        }
+        .controls {
+            margin-top: 1rem;
+        }
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        .status-active {
+            background-color: #28a745;
+        }
+        .status-inactive {
+            background-color: #dc3545;
+        }
+        .status-connecting {
+            background-color: #ffc107;
+        }
+        #streamInfo {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+        .navbar {
+            margin-bottom: 1rem;
+        }
+        .camera-options {
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">Stream Cam</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/streamer">Stream</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/viewer">View</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1 class="mb-4">Stream from your device</h1>
+        
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="camera-options">
+                            <label for="cameraSelect" class="form-label">Select Camera:</label>
+                            <select id="cameraSelect" class="form-select"></select>
+                        </div>
+                        
+                        <div class="video-container">
+                            <video id="videoElement" autoplay playsinline></video>
+                        </div>
+                        
+                        <div class="controls mt-3">
+                            <div class="row">
+                                <div class="col">
+                                    <input type="text" id="streamName" class="form-control" placeholder="Stream Name (e.g., Living Room Camera)">
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col">
+                                    <button id="startButton" class="btn btn-primary w-100">Start Streaming</button>
+                                    <button id="stopButton" class="btn btn-danger w-100 mt-2" disabled>Stop Streaming</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Stream Status</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="streamStatus">
+                            <span class="status-indicator status-inactive"></span> Not streaming
+                        </div>
+                        <div id="streamInfo" class="mt-3">
+                            <p>Stream ID: <span id="streamId">-</span></p>
+                            <p>Resolution: <span id="resolution">-</span></p>
+                            <p>Frame Rate: <span id="frameRate">-</span> FPS</p>
+                            <p>Frames Sent: <span id="framesSent">0</span></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5>Instructions</h5>
+                    </div>
+                    <div class="card-body">
+                        <ol>
+                            <li>Allow camera access when prompted</li>
+                            <li>Select your preferred camera if multiple are available</li>
+                            <li>Enter a descriptive name for your stream</li>
+                            <li>Click "Start Streaming" to begin</li>
+                            <li>Share your stream ID with viewers</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let videoElement = document.getElementById('videoElement');
+        let cameraSelect = document.getElementById('cameraSelect');
+        let startButton = document.getElementById('startButton');
+        let stopButton = document.getElementById('stopButton');
+        let streamName = document.getElementById('streamName');
+        let streamStatus = document.getElementById('streamStatus');
+        let streamId = document.getElementById('streamId');
+        let resolution = document.getElementById('resolution');
+        let frameRate = document.getElementById('frameRate');
+        let framesSent = document.getElementById('framesSent');
+        
+        let stream = null;
+        let mediaRecorder = null;
+        let isStreaming = false;
+        let currentStreamId = null;
+        let frameCount = 0;
+        let startTime = null;
+        let frameInterval = null;
+        
+        // Get available cameras
+        async function getCameras() {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                
+                cameraSelect.innerHTML = '';
+                videoDevices.forEach(device => {
+                    const option = document.createElement('option');
+                    option.value = device.deviceId;
+                    option.text = device.label || `Camera ${cameraSelect.length + 1}`;
+                    cameraSelect.appendChild(option);
+                });
+                
+                // If no camera labels are shown, we need to request permission first
+                if (videoDevices.length > 0 && !videoDevices[0].label) {
+                    await initCamera();
+                    await getCameras(); // Call again to get labels
+                }
+            } catch (error) {
+                console.error('Error getting cameras:', error);
+                alert('Failed to get camera list: ' + error.message);
+            }
+        }
+        
+        // Initialize camera
+        async function initCamera() {
+            try {
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+                
+                const constraints = {
+                    video: {
+                        deviceId: cameraSelect.value ? { exact: cameraSelect.value } : undefined,
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                };
+                
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                videoElement.srcObject = stream;
+                
+                // Update resolution info
+                const videoTrack = stream.getVideoTracks()[0];
+                const settings = videoTrack.getSettings();
+                resolution.textContent = `${settings.width}x${settings.height}`;
+                
+                return true;
+            } catch (error) {
+                console.error('Error accessing camera:', error);
+                alert('Failed to access camera: ' + error.message);
+                return false;
+            }
+        }
+        
+        // Register stream with server
+        async function registerStream() {
+            try {
+                const name = streamName.value || 'Unnamed Stream';
+                const response = await fetch('/api/register_stream', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: name
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    currentStreamId = data.stream_id;
+                    streamId.textContent = currentStreamId;
+                    return true;
+                } else {
+                    throw new Error(data.message || 'Failed to register stream');
+                }
+            } catch (error) {
+                console.error('Error registering stream:', error);
+                alert('Failed to register stream: ' + error.message);
+                return false;
+            }
+        }
+        
+        // Deactivate stream
+        async function deactivateStream() {
+            if (!currentStreamId) return;
+            
+            try {
+                await fetch(`/api/deactivate_stream/${currentStreamId}`, {
+                    method: 'POST'
+                });
+            } catch (error) {
+                console.error('Error deactivating stream:', error);
+            }
+        }
+        
+        // Send frame to server
+        async function sendFrame(frame) {
+            if (!currentStreamId || !isStreaming) return;
+            
+            try {
+                const response = await fetch('/api/upload_base64_frame', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        stream_id: currentStreamId,
+                        frame: frame
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    frameCount++;
+                    framesSent.textContent = frameCount;
+                    
+                    // Calculate FPS
+                    const elapsed = (Date.now() - startTime) / 1000;
+                    if (elapsed > 0) {
+                        frameRate.textContent = (frameCount / elapsed).toFixed(1);
+                    }
+                }
+            } catch (error) {
+                console.error('Error sending frame:', error);
+            }
+        }
+        
+        // Capture and send frames
+        function captureAndSendFrames() {
+            if (!isStreaming || !videoElement.srcObject) return;
+            
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = videoElement.videoWidth;
+            canvas.height = videoElement.videoHeight;
+            
+            frameInterval = setInterval(() => {
+                ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+                const frame = canvas.toDataURL('image/jpeg', 0.7);
+                sendFrame(frame);
+            }, 100); // Send ~10 frames per second
+        }
+        
+        // Start streaming
+        async function startStreaming() {
+            if (isStreaming) return;
+            
+            // Update UI
+            streamStatus.innerHTML = '<span class="status-indicator status-connecting"></span> Connecting...';
+            startButton.disabled = true;
+            
+            // Initialize camera
+            const cameraReady = await initCamera();
+            if (!cameraReady) {
+                streamStatus.innerHTML = '<span class="status-indicator status-inactive"></span> Not streaming';
+                startButton.disabled = false;
+                return;
+            }
+            
+            // Register stream
+            const registered = await registerStream();
+            if (!registered) {
+                streamStatus.innerHTML = '<span class="status-indicator status-inactive"></span> Not streaming';
+                startButton.disabled = false;
+                return;
+            }
+            
+            // Start streaming
+            isStreaming = true;
+            frameCount = 0;
+            startTime = Date.now();
+            captureAndSendFrames();
+            
+            // Update UI
+            streamStatus.innerHTML = '<span class="status-indicator status-active"></span> Streaming';
+            startButton.disabled = true;
+            stopButton.disabled = false;
+            cameraSelect.disabled = true;
+            streamName.disabled = true;
+        }
+        
+        // Stop streaming
+        async function stopStreaming() {
+            if (!isStreaming) return;
+            
+            // Stop capturing frames
+            if (frameInterval) {
+                clearInterval(frameInterval);
+                frameInterval = null;
+            }
+            
+            // Deactivate stream
+            await deactivateStream();
+            
+            // Stop camera
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+                videoElement.srcObject = null;
+            }
+            
+            // Update UI
+            isStreaming = false;
+            currentStreamId = null;
+            streamStatus.innerHTML = '<span class="status-indicator status-inactive"></span> Not streaming';
+            startButton.disabled = false;
+            stopButton.disabled = true;
+            cameraSelect.disabled = false;
+            streamName.disabled = false;
+            streamId.textContent = '-';
+        }
+        
+        // Event listeners
+        startButton.addEventListener('click', startStreaming);
+        stopButton.addEventListener('click', stopStreaming);
+        cameraSelect.addEventListener('change', initCamera);
+        
+        // Handle page unload
+        window.addEventListener('beforeunload', deactivateStream);
+        
+        // Initialize
+        getCameras();
+    </script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stream Cam - Viewer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 1rem;
+            background-color: #f8f9fa;
+        }
+        .stream-container {
+            position: relative;
+            margin: 1rem auto;
+            max-width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .stream-img {
+            width: 100%;
+            background-color: #000;
+            min-height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+        }
+        .stream-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(0,0,0,0.5);
+            padding: 0.5rem;
+            display: flex;
+            justify-content: center;
+        }
+        .stream-controls button {
+            margin: 0 0.25rem;
+        }
+        .stream-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .stream-item {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .stream-item:hover {
+            background-color: #f0f0f0;
+        }
+        .stream-item.active {
+            background-color: #e2f3ff;
+            border-left: 3px solid #0d6efd;
+        }
+        .navbar {
+            margin-bottom: 1rem;
+        }
+        .captured-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            margin-top: 1rem;
+        }
+        #noStreamMessage {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 300px;
+            background-color: #f0f0f0;
+            border-radius: 8px;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">Stream Cam</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/streamer">Stream</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/viewer">View</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1 class="mb-4">View Streams</h1>
+        
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 id="currentStreamName">No Stream Selected</h5>
+                        <button id="refreshButton" class="btn btn-sm btn-outline-secondary">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-clockwise" viewBox="0 0 16 16">
+                                <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+                                <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+                            </svg>
+                            Refresh
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div id="streamContainer" class="stream-container">
+                            <div id="noStreamMessage">
+                                <div class="text-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" class="bi bi-camera-video-off" viewBox="0 0 16 16">
+                                        <path fill-rule="evenodd" d="M10.961 12.365a1.99 1.99 0 0 0 .522-1.103l3.11 1.382A1 1 0 0 0 16 11.731V4.269a1 1 0 0 0-1.406-.913l-3.111 1.382A2 2 0 0 0 9.5 3H4.272l.714 1H9.5a1 1 0 0 1 1 1v6a1 1 0 0 1-.144.518l.605.847zM1.428 4.18A.999.999 0 0 0 1 5v6a1 1 0 0 0 1 1h5.014l.714 1H2a2 2 0 0 1-2-2V5c0-.675.334-1.272.847-1.634l.58.814zM15 11.73l-3.5-1.555v-4.35L15 4.269v7.462zm-4.407 3.56-10-14 .814-.58 10 14-.814.58z"/>
+                                    </svg>
+                                    <p class="mt-3">Select a stream from the list to view</p>
+                                </div>
+                            </div>
+                            <img id="streamImage" class="stream-img d-none" alt="Stream">
+                            <div id="streamControls" class="stream-controls d-none">
+                                <button id="captureButton" class="btn btn-sm btn-light">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-camera" viewBox="0 0 16 16">
+                                        <path d="M15 12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h1.172a3 3 0 0 0 2.12-.879l.83-.828A1 1 0 0 1 6.827 3h2.344a1 1 0 0 1 .707.293l.828.828A3 3 0 0 0 12.828 5H14a1 1 0 0 1 1 1v6zM2 4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-1.172a2 2 0 0 1-1.414-.586l-.828-.828A2 2 0 0 0 9.172 2H6.828a2 2 0 0 0-1.414.586l-.828.828A2 2 0 0 1 3.172 4H2z"/>
+                                        <path d="M8 11a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5zm0 1a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM3 6.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0z"/>
+                                    </svg>
+                                    Capture Image
+                                </button>
+                                <button id="fullscreenButton" class="btn btn-sm btn-light">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-fullscreen" viewBox="0 0 16 16">
+                                        <path d="M1.5 1a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0v-4A1.5 1.5 0 0 1 1.5 0h4a.5.5 0 0 1 0 1h-4zM10 .5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 16 1.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5zM.5 10a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 0 14.5v-4a.5.5 0 0 1 .5-.5zm15 0a.5.5 0 0 1 .5.5v4a1.5 1.5 0 0 1-1.5 1.5h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5z"/>
+                                    </svg>
+                                    Fullscreen
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="capturedImageContainer" class="card mt-3 d-none">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5>Captured Image</h5>
+                        <button id="downloadButton" class="btn btn-sm btn-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-download" viewBox="0 0 16 16">
+                                <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                                <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+                            </svg>
+                            Download
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <img id="capturedImage" class="captured-image" alt="Captured Image">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Available Streams</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div id="streamList" class="stream-list list-group list-group-flush">
+                            <div class="list-group-item text-center text-muted py-5">
+                                <div class="spinner-border spinner-border-sm" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="mt-2">Loading streams...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5>Instructions</h5>
+                    </div>
+                    <div class="card-body">
+                        <ol>
+                            <li>Select a stream from the list on the right</li>
+                            <li>The stream will automatically start playing</li>
+                            <li>Use the capture button to take a still image</li>
+                            <li>You can download captured images</li>
+                            <li>Click refresh to update the list of available streams</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Elements
+        const streamList = document.getElementById('streamList');
+        const streamImage = document.getElementById('streamImage');
+        const noStreamMessage = document.getElementById('noStreamMessage');
+        const streamControls = document.getElementById('streamControls');
+        const currentStreamName = document.getElementById('currentStreamName');
+        const captureButton = document.getElementById('captureButton');
+        const fullscreenButton = document.getElementById('fullscreenButton');
+        const refreshButton = document.getElementById('refreshButton');
+        const capturedImageContainer = document.getElementById('capturedImageContainer');
+        const capturedImage = document.getElementById('capturedImage');
+        const downloadButton = document.getElementById('downloadButton');
+        
+        let currentStreamId = null;
+        let refreshInterval = null;
+        
+        // Fetch available streams
+        async function fetchStreams() {
+            try {
+                const response = await fetch('/api/streams');
+                const streams = await response.json();
+                
+                // Clear the stream list
+                streamList.innerHTML = '';
+                
+                if (Object.keys(streams).length === 0) {
+                    streamList.innerHTML = `
+                        <div class="list-group-item text-center text-muted py-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-camera-video-off" viewBox="0 0 16 16">
+                                <path fill-rule="evenodd" d="M10.961 12.365a1.99 1.99 0 0 0 .522-1.103l3.11 1.382A1 1 0 0 0 16 11.731V4.269a1 1 0 0 0-1.406-.913l-3.111 1.382A2 2 0 0 0 9.5 3H4.272l.714 1H9.5a1 1 0 0 1 1 1v6a1 1 0 0 1-.144.518l.605.847zM1.428 4.18A.999.999 0 0 0 1 5v6a1 1 0 0 0 1 1h5.014l.714 1H2a2 2 0 0 1-2-2V5c0-.675.334-1.272.847-1.634l.58.814zM15 11.73l-3.5-1.555v-4.35L15 4.269v7.462zm-4.407 3.56-10-14 .814-.58 10 14-.814.58z"/>
+                            </svg>
+                            <p class="mt-3">No active streams found</p>
+                            <button class="btn btn-sm btn-outline-primary mt-2" onclick="fetchStreams()">Refresh</button>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Add each stream to the list
+                Object.entries(streams).forEach(([id, stream]) => {
+                    const lastUpdate = new Date(stream.last_update * 1000).toLocaleTimeString();
+                    const item = document.createElement('div');
+                    item.className = 'list-group-item stream-item';
+                    if (id === currentStreamId) {
+                        item.classList.add('active');
+                    }
+                    
+                    item.innerHTML = `
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">${stream.name}</h6>
+                            <span class="badge bg-success">${stream.clients} viewer${stream.clients !== 1 ? 's' : ''}</span>
+                        </div>
+                        <div class="small text-muted">
+                            Last update: ${lastUpdate}
+                        </div>
+                    `;
+                    
+                    item.addEventListener('click', () => selectStream(id, stream.name));
+                    streamList.appendChild(item);
+                });
+                
+                // If current stream is no longer available, clear it
+                if (currentStreamId && !streams[currentStreamId]) {
+                    stopStream();
+                }
+            } catch (error) {
+                console.error('Error fetching streams:', error);
+                streamList.innerHTML = `
+                    <div class="list-group-item text-center text-danger py-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-exclamation-triangle" viewBox="0 0 16 16">
+                            <path d="M7.938 2.016A.13.13 0 0 1 8.002 2a.13.13 0 0 1 .063.016.146.146 0 0 1 .054.057l6.857 11.667c.036.06.035.124.002.183a.163.163 0 0 1-.054.06.116.116 0 0 1-.066.017H1.146a.115.115 0 0 1-.066-.017.163.163 0 0 1-.054-.06.176.176 0 0 1 .002-.183L7.884 2.073a.147.147 0 0 1 .054-.057zm1.044-.45a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566z"/>
+                            <path d="M7.002 12a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 5.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995z"/>
+                        </svg>
+                        <p class="mt-3">Error loading streams</p>
+                        <button class="btn btn-sm btn-outline-primary mt-2" onclick="fetchStreams()">Try Again</button>
+                    </div>
+                `;
+            }
+        }
+        
+        // Select a stream to view
+        function selectStream(streamId, name) {
+            // If already selected, do nothing
+            if (currentStreamId === streamId) return;
+            
+            // Update UI
+            currentStreamId = streamId;
+            currentStreamName.textContent = name;
+            
+            // Update stream list selection
+            const items = streamList.querySelectorAll('.stream-item');
+            items.forEach(item => item.classList.remove('active'));
+            const selectedItem = Array.from(items).find(item => 
+                item.querySelector('h6').textContent === name
+            );
+            if (selectedItem) {
+                selectedItem.classList.add('active');
+            }
+            
+            // Show stream
+            streamImage.src = `/stream/${streamId}`;
+            streamImage.classList.remove('d-none');
+            noStreamMessage.classList.add('d-none');
+            streamControls.classList.remove('d-none');
+            
+            // Hide captured image if any
+            capturedImageContainer.classList.add('d-none');
+        }
+        
+        // Stop the current stream
+        function stopStream() {
+            currentStreamId = null;
+            currentStreamName.textContent = 'No Stream Selected';
+            streamImage.classList.add('d-none');
+            noStreamMessage.classList.remove('d-none');
+            streamControls.classList.add('d-none');
+        }
+        
+        // Capture an image from the current stream
+        async function captureImage() {
+            if (!currentStreamId) return;
+            
+            try {
+                const response = await fetch(`/api/capture_image/${currentStreamId}`);
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    capturedImage.src = data.image;
+                    capturedImageContainer.classList.remove('d-none');
+                    
+                    // Set up download button
+                    downloadButton.onclick = () => {
+                        const link = document.createElement('a');
+                        link.href = data.image;
+                        link.download = `capture_${currentStreamId}_${new Date().toISOString().replace(/:/g, '-')}.jpg`;
+                        link.click();
+                    };
+                } else {
+                    alert('Failed to capture image: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error capturing image:', error);
+                alert('Error capturing image: ' + error.message);
+            }
+        }
+        
+        // Toggle fullscreen
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                streamImage.requestFullscreen().catch(err => {
+                    console.error('Error attempting to enable fullscreen:', err);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
+        
+        // Event listeners
+        captureButton.addEventListener('click', captureImage);
+        fullscreenButton.addEventListener('click', toggleFullscreen);
+        refreshButton.addEventListener('click', fetchStreams);
+        
+        // Handle stream image errors
+        streamImage.addEventListener('error', () => {
+            if (currentStreamId) {
+                console.error('Stream image failed to load');
+                // Don't immediately stop the stream, as it might be temporary
+                // Instead, mark the image with an error class
+                streamImage.classList.add('error');
+            }
+        });
+        
+        // Initialize
+        fetchStreams();
+        
+        // Set up auto-refresh
+        refreshInterval = setInterval(fetchStreams, 10000); // Refresh every 10 seconds
+        
+        // Clean up on page unload
+        window.addEventListener('beforeunload', () => {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+        });
+    </script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
